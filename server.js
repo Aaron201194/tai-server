@@ -88,7 +88,6 @@ async function startHeadlessBot() {
     page.on('console', (msg) => console.log('[TURBOWARP]', msg.text()));
     page.on('pageerror', (err) => console.error('[PAGE ERROR]', err.message));
 
-    // Use domcontentloaded so open Discord WebSockets don't block networkidle2 forever
     await page.goto(`http://127.0.0.1:${PORT}/bot.html`, {
       waitUntil: 'domcontentloaded',
       timeout: 60000
@@ -103,36 +102,18 @@ async function startHeadlessBot() {
     botStatus = `RUNNING (Started at ${new Date().toISOString()})`;
     console.log(botStatus);
   } catch (err) {
-    botStatus = `ERROR: ${err.message}`;
-    console.error(botStatus);
-  }
-}
-
-    const page = await browserInstance.newPage();
-    page.on('console', (msg) => console.log('[TURBOWARP]', msg.text()));
-    page.on('pageerror', (err) => console.error('[PAGE ERROR]', err.message));
-
-    await page.goto(`http://127.0.0.1:${PORT}/bot.html`, { waitUntil: 'networkidle2' });
-
-    // Click green flag automatically if Auto-start wasn't enabled
-    await page.evaluate(() => {
-      const flag = document.querySelector('[title="Start"], .green-flag');
-      if (flag) flag.click();
-    });
-
-    botStatus = `RUNNING (Started at ${new Date().toISOString()})`;
-    console.log(botStatus);
-  } catch (err) {
     botStatus = `CRASHED: ${err.message} - Restarting in 5s...`;
     console.error(botStatus);
     if (browserInstance) {
-      try { await browserInstance.close(); } catch (_) {}
+      try {
+        await browserInstance.close();
+      } catch (_) {}
     }
     setTimeout(startHeadlessBot, 5000);
   }
 }
 
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server listening on 0.0.0.0:${PORT}`);
   startHeadlessBot();
 });
