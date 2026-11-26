@@ -65,17 +65,48 @@ const server = http.createServer(async (req, res) => {
 // 2. Launch Headless Chromium & Run bot.html
 async function startHeadlessBot() {
   try {
+    botStatus = 'Launching Chromium (low-memory mode)...';
     browserInstance = await puppeteer.launch({
-      headless: true,
+      headless: 'new',
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--single-process',
+        '--no-zygote',
+        '--js-flags=--max-old-space-size=256',
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
         '--disable-renderer-backgrounding'
       ]
     });
+
+    botStatus = 'Opening bot.html...';
+    const page = await browserInstance.newPage();
+    page.on('console', (msg) => console.log('[TURBOWARP]', msg.text()));
+    page.on('pageerror', (err) => console.error('[PAGE ERROR]', err.message));
+
+    // Use domcontentloaded so open Discord WebSockets don't block networkidle2 forever
+    await page.goto(`http://127.0.0.1:${PORT}/bot.html`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
+
+    await new Promise((r) => setTimeout(r, 2000));
+    await page.evaluate(() => {
+      const flag = document.querySelector('[title="Start"], .green-flag');
+      if (flag) flag.click();
+    });
+
+    botStatus = `RUNNING (Started at ${new Date().toISOString()})`;
+    console.log(botStatus);
+  } catch (err) {
+    botStatus = `ERROR: ${err.message}`;
+    console.error(botStatus);
+  }
+}
 
     const page = await browserInstance.newPage();
     page.on('console', (msg) => console.log('[TURBOWARP]', msg.text()));
